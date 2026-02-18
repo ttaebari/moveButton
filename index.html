@@ -232,6 +232,11 @@
 
             // "Hate" Button Logic
             const moveButton = () => {
+                // FIX: Move button to body to avoid backdrop-filter/transform containing block issues
+                if (noBtn.parentElement !== document.body) {
+                    document.body.appendChild(noBtn);
+                }
+
                 const maxX = window.innerWidth - noBtn.offsetWidth;
                 const maxY = window.innerHeight - noBtn.offsetHeight;
 
@@ -239,7 +244,7 @@
                 const randomY = Math.floor(Math.random() * maxY);
 
                 noBtn.style.position = "fixed";
-                noBtn.style.zIndex = "100"; // Ensure it's above everything
+                noBtn.style.zIndex = "1000"; // Ensure it's above everything
 
                 // Safety margin
                 const safeX = Math.min(Math.max(randomX, 20), maxX - 20);
