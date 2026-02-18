@@ -31,6 +31,7 @@
                 overflow: hidden;
                 text-align: center;
                 position: relative;
+                user-select: none; /* Prevent selection */
             }
 
             /* Animated Background Gradient */
@@ -61,34 +62,61 @@
             .heart {
                 position: absolute;
                 bottom: -100px;
-                width: 40px;
-                height: 40px;
-                background: rgba(255, 255, 255, 0.5);
-                clip-path: polygon(
-                    50% 0%,
-                    61% 35%,
-                    98% 35%,
-                    68% 57%,
-                    79% 91%,
-                    50% 70%,
-                    21% 91%,
-                    32% 57%,
-                    2% 35%,
-                    39% 35%
+                width: 30px;
+                height: 30px;
+                background-color: rgba(255, 255, 255, 0.6);
+                /* Heart Shape using Clip Path */
+                clip-path: path(
+                    "M15,28.2 C15,28.2 28.5,19.2 28.5,10.2 C28.5,5.2 24.5,1.2 19.5,1.2 C16.5,1.2 13.8,3.2 12,5.2 C10.2,3.2 7.5,1.2 4.5,1.2 C-0.5,1.2 -3.5,5.2 -3.5,10.2 C-3.5,19.2 12,28.2 12,28.2 Z"
                 );
+                /* Simplified clip path for heart might be tricky, let's use SVG background or a known good polygon/path */
+                /* Better CSS Heart: Rotate two circles and a square. Or SVG image. */
+                clip-path: inherit; /* Reset clip path to use standard CSS heart method below */
+                background: transparent;
+                animation: floatUp 10s linear infinite;
+            }
+
+            /* CSS Heart Shape Generator */
+            .heart::before,
+            .heart::after {
+                content: "";
+                position: absolute;
+                display: block;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(255, 255, 255, 0.5);
+                border-radius: 50%;
+            }
+
+            .heart::before {
+                transform: translate(-50%, 0);
+            }
+
+            .heart::after {
+                transform: translate(
+                    0,
+                    -50%
+                ); /* Wait, this is the pseudo-element method, requires container rotation */
+            }
+
+            /* Let's use a simpler SVG image for the background hearts for perfection */
+            .heart-svg {
+                position: absolute;
+                bottom: -50px;
+                fill: rgba(255, 255, 255, 0.4);
                 animation: floatUp 10s linear infinite;
             }
 
             @keyframes floatUp {
                 0% {
-                    transform: translateY(0) rotate(0deg);
+                    transform: translateY(0) scale(0.5);
                     opacity: 0;
                 }
                 10% {
                     opacity: 0.8;
                 }
                 100% {
-                    transform: translateY(-120vh) rotate(360deg);
+                    transform: translateY(-120vh) scale(1.2);
                     opacity: 0;
                 }
             }
@@ -101,19 +129,29 @@
                 -webkit-backdrop-filter: blur(10px);
                 border-radius: 20px;
                 border: 1px solid rgba(255, 255, 255, 0.18);
-                padding: 50px;
+                padding: 40px;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
                 z-index: 10;
                 width: 90%;
                 max-width: 500px;
+                transition: transform 0.3s ease;
+            }
+
+            #character-img {
+                width: 150px;
+                height: 150px;
+                object-fit: contain;
+                margin-bottom: 20px;
+                filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+                transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             }
 
             h1 {
                 font-family: "Jua", sans-serif;
                 color: white;
-                font-size: 3.5rem;
+                font-size: 3rem;
                 margin-bottom: 40px;
                 text-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
                 letter-spacing: 2px;
@@ -125,8 +163,7 @@
                 gap: 30px;
                 width: 100%;
                 position: relative;
-                /* Container needs to be high enough so buttons don't overlap initially */
-                min-height: 100px;
+                min-height: 80px;
                 align-items: center;
             }
 
@@ -163,17 +200,21 @@
             #no-btn {
                 background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
                 color: #fff;
-                position: fixed; /* Fixed by default to handle movement easier */
-                /* Initial position will be handled by flexbox in static flow if we remove 'fixed' initially,
-               but to simplify the jump logic, we can start it static and switch to fixed on first move, 
-               OR keep it relative then fixed. Let's stick to the previous logic. */
+                position: fixed; /* Start fixed but initially positioned by JS or CSS? CSS is static in flow usually. */
+                /* We'll let JS handle the initial "static-like" placement or just center it.
+               Actually, let's keep it static initially for layout, then fixed on move. */
                 position: static;
             }
 
             /* Mobile Adjustments */
             @media (max-width: 600px) {
                 h1 {
-                    font-size: 2.2rem;
+                    font-size: 2rem;
+                    margin-bottom: 20px;
+                }
+                #character-img {
+                    width: 120px;
+                    height: 120px;
                 }
                 button {
                     font-size: 1.1rem;
@@ -190,6 +231,9 @@
         <div class="hearts" id="hearts-container"></div>
 
         <div class="glass-card">
+            <!-- New Character Image -->
+            <img id="character-img" src="asset/1.svg" alt="Taeho Character" />
+
             <h1>태호랑 놀아주기</h1>
             <div class="button-container">
                 <button id="yes-btn">좋아!</button>
@@ -197,45 +241,113 @@
             </div>
         </div>
 
+        <!-- Hidden Preload Images -->
+        <div style="display: none">
+            <img src="asset/2.svg" />
+            <img src="asset/3.svg" />
+            <img src="asset/4.svg" />
+        </div>
+
         <script>
-            // Generate Floating Hearts
+            // --- 1. Heart Background Logic ---
             const heartsContainer = document.getElementById("hearts-container");
-            for (let i = 0; i < 15; i++) {
-                const heart = document.createElement("div");
-                heart.classList.add("heart");
+            const heartSVG = `
+            <svg class="heart-svg" viewBox="0 0 32 29.6" width="30" height="30">
+                <path d="M23.6,0c-3.4,0-6.3,2.7-7.6,5.6C14.7,2.7,11.8,0,8.4,0C3.8,0,0,3.8,0,8.4c0,9.4,9.5,11.9,16,21.2
+                c6.1-9.3,16-11.8,16-21.2C32,3.8,28.2,0,23.6,0z"/>
+            </svg>
+        `;
+
+            for (let i = 0; i < 20; i++) {
+                const wrapper = document.createElement("div");
+                wrapper.innerHTML = heartSVG;
+                const heart = wrapper.firstElementChild;
                 heart.style.left = Math.random() * 100 + "vw";
-                heart.style.animationDuration = Math.random() * 5 + 5 + "s"; // 5-10s
+                heart.style.animationDuration = Math.random() * 8 + 6 + "s"; // 6-14s
                 heart.style.animationDelay = Math.random() * 5 + "s";
+                // Random size
+                const size = Math.random() * 20 + 20;
+                heart.setAttribute("width", size);
+                heart.setAttribute("height", size);
                 heartsContainer.appendChild(heart);
             }
 
+            // --- 2. Annoyance Level & Image Logic ---
+            const charImg = document.getElementById("character-img");
+            let annoyanceCount = 0;
+            let currentImageLevel = 1;
+
+            const updateImage = () => {
+                // Logic: Every 3 clicks -> 1 level up.
+                // 0-2: Level 1
+                // 3-5: Level 2
+                // 6-8: Level 3
+                // 9+: Level 4
+                const newLevel = Math.min(Math.floor(annoyanceCount / 3) + 1, 4);
+
+                if (newLevel !== currentImageLevel) {
+                    currentImageLevel = newLevel;
+                    charImg.src = `asset/${currentImageLevel}.svg`;
+
+                    // Little animation when changing
+                    charImg.style.transform = "scale(1.2) rotate(5deg)";
+                    setTimeout(() => (charImg.style.transform = "scale(1) rotate(0deg)"), 200);
+                }
+            };
+
+            const registerAnnoyance = () => {
+                annoyanceCount++;
+                console.log(`Annoyance: ${annoyanceCount}`);
+                updateImage();
+            };
+
+            const resetAnnoyance = () => {
+                annoyanceCount = 0;
+                updateImage();
+            };
+
+            // --- 3. Button Interactions ---
             const yesBtn = document.getElementById("yes-btn");
             const noBtn = document.getElementById("no-btn");
             let yesScale = 1;
 
-            // "Like" Button Logic
+            // "Like" Button
             yesBtn.addEventListener("click", (e) => {
+                e.stopPropagation(); // Don't trigger background click
+
+                // 1. Reset Annoyance
+                resetAnnoyance();
+
+                // 2. Grow Button
                 yesScale += 0.2;
                 yesBtn.style.transform = `scale(${yesScale})`;
 
-                // Interaction feedback
                 if (navigator.vibrate) navigator.vibrate(50);
 
-                // Confetti Explosion!
+                // 3. Heart Confetti
+                const heartShape = confetti.shapeFromPath({
+                    path: "M16.7 6.35C15.6 2.85 11.95 0 8.35 0 3.75 0 0 3.75 0 8.35c0 8.85 16.7 18.25 16.7 18.25s16.7-9.4 16.7-18.25c0-4.6-3.75-8.35-8.35-8.35-3.6 0-7.25 2.85-8.35 6.35z",
+                });
+
                 confetti({
-                    particleCount: 100,
-                    spread: 70,
+                    particleCount: 60,
+                    spread: 100,
                     origin: { y: 0.6 },
-                    colors: ["#ff9a9e", "#fad0c4", "#a18cd1", "#fbc2eb", "#fff"],
+                    shapes: [heartShape],
+                    colors: ["#ff9a9e", "#fad0c4", "#fbc2eb", "#ff69b4"],
+                    scalar: 2, // Make them a bit bigger
                 });
             });
 
-            // "Hate" Button Logic
+            // "Hate" Button - Move & Annoy
             const moveButton = () => {
-                // FIX: Move button to body to avoid backdrop-filter/transform containing block issues
+                // FIX: Ensure button is in body
                 if (noBtn.parentElement !== document.body) {
                     document.body.appendChild(noBtn);
                 }
+
+                // Register annoyance!
+                registerAnnoyance();
 
                 const maxX = window.innerWidth - noBtn.offsetWidth;
                 const maxY = window.innerHeight - noBtn.offsetHeight;
@@ -244,9 +356,8 @@
                 const randomY = Math.floor(Math.random() * maxY);
 
                 noBtn.style.position = "fixed";
-                noBtn.style.zIndex = "1000"; // Ensure it's above everything
+                noBtn.style.zIndex = "1000";
 
-                // Safety margin
                 const safeX = Math.min(Math.max(randomX, 20), maxX - 20);
                 const safeY = Math.min(Math.max(randomY, 20), maxY - 20);
 
@@ -254,14 +365,31 @@
                 noBtn.style.top = safeY + "px";
             };
 
+            // Events for Hate Button
             noBtn.addEventListener("mouseover", moveButton);
             noBtn.addEventListener("touchstart", (e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 moveButton();
             });
             noBtn.addEventListener("click", (e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 moveButton();
+            });
+
+            // --- 4. Background Click (Miss Click = Annoyance) ---
+            // We attach to body to catch any clicks not stopped by buttons
+            document.body.addEventListener("click", (e) => {
+                // If we clicked strictly on the body/container (not buttons)
+                // But buttons stop propagation, so any click reaching here is a "miss"
+
+                // Visual feedback for miss-click? Maybe a small shake?
+                const card = document.querySelector(".glass-card");
+                card.style.transform = "translateX(5px)";
+                setTimeout(() => (card.style.transform = "translateX(0)"), 100);
+
+                registerAnnoyance();
             });
         </script>
     </body>
